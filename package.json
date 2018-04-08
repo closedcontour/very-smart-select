@@ -1,0 +1,44 @@
+{
+    "name": "very-smart-select",
+    "displayName": "Very Smart Select",
+    "description": "Language-aware smart select; much smarter than the default smart select.",
+    "version": "0.0.1",
+    "publisher": "closedcontour",
+    "engines": {
+        "vscode": "^1.21.0"
+    },
+    "categories": [
+        "Other"
+    ],
+    "activationEvents": [
+        "onCommand:very-smart-select.grow",
+        "onCommand:very-smart-select.shrink"
+    ],
+    "main": "./out/extension",
+    "contributes": {
+        "commands": [
+            {
+                "command": "very-smart-select.grow",
+                "title": "Very Smart Select: Grow the Selection"
+            },
+            {
+                "command": "very-smart-select.shrink",
+                "title": "Very Smart Select: Shrink the selection"
+            }
+        ]
+    },
+    "scripts": {
+        "vscode:prepublish": "npm run compile",
+        "compile": "tsc -p ./",
+        "watch": "tsc -watch -p ./",
+        "postinstall": "node ./node_modules/vscode/bin/install",
+        "test": "npm run compile && node ./node_modules/vscode/bin/test"
+    },
+    "devDependencies": {
+        "@types/mocha": "^2.2.42",
+        "@types/node": "^7.0.43",
+        "tslint": "^5.8.0",
+        "typescript": "^2.8.1",
+        "vscode": "^1.1.6"
+    }
+}
