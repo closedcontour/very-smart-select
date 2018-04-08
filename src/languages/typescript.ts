@@ -68,7 +68,7 @@ export class TypescriptStrategy implements SelectionStrategy {
         const selectionEnd = doc.offsetAt(editor.selection.end);
         const text = doc.getText();
         const range = expandWhitespace(text, selectionStart, selectionEnd);
-        const node = createSourceFile(doc.fileName, text, ScriptTarget.ES2015);
+        const node = createSourceFile(doc.fileName, text, ScriptTarget.Latest);
         const path = pathToPosition(node, range.start, range.end);
         let expansionNode: Node | undefined;
         for (let i = path.length - 1; i >= 0; i--) {
@@ -87,6 +87,6 @@ export class TypescriptStrategy implements SelectionStrategy {
     }
 
     shrink(editor: TextEditor): void {
-        console.log("shrink not implemented");
+        // TODO: need use history from above
     }
 }
