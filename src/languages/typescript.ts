@@ -87,6 +87,6 @@ export class TypescriptStrategy implements SelectionStrategy {
     }
 
     shrink(editor: TextEditor): void {
-        throw new Error("Method not implemented.");
+        console.log("shrink not implemented");
     }
 }

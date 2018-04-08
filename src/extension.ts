@@ -25,21 +25,32 @@ class VerySmartSelect {
         this.strategies["typescriptreact"] = new TypescriptStrategy();
         this.strategies["javascript"] = new TypescriptStrategy();
         this.strategies["javascriptreact"] = new TypescriptStrategy();
+        this.strategies["json"] = new TypescriptStrategy();
     }
 
-    public grow() {
+    private getStrategy(): SelectionStrategy | undefined {
         const editor = window.activeTextEditor;
         if (!editor) {
-            return;
+            return undefined;
         }
         const doc = editor.document;
         const strategy = this.strategies[doc.languageId];
-        if (strategy !== undefined) {
-            strategy.grow(editor);
+        return strategy;
+    }
+
+    public grow() {
+        const strategy = this.getStrategy();
+        if (strategy === undefined) {
+            return;
         }
+        strategy.grow(window.activeTextEditor!);
     }
 
     public shrink() {
-        console.log("shrink not yet supported");
+        const strategy = this.getStrategy();
+        if (strategy === undefined) {
+            return;
+        }
+        strategy.shrink(window.activeTextEditor!);
     }
 }
