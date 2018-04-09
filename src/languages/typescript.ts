@@ -1,5 +1,5 @@
 import { SelectionStrategy, Range } from "../api";
-import { TextEditor, Selection } from "vscode";
+import { TextEditor } from "vscode";
 import { createSourceFile, Node, ScriptTarget } from "typescript";
 
 function pathToPositionInternal(node: Node, start: number, end: number, path: Node[]) {
@@ -23,70 +23,77 @@ function pathToPosition(node: Node, start: number, end: number): Node[] {
 const WHITESPACE = /\s/;
 
 // TODO: if you start in whitespace on either side, expand until you include non-whitespace
-function expandWhitespace(source: string, start: number, end: number): Range {
-    let i = start - 1;
+function expandWhitespace(source: string, range: Range): Range {
+    let i = range.start - 1;
     let leftAdd = 0;
     while (i >= 0 && WHITESPACE.test(source.charAt(i))) {
         i--;
         leftAdd++;
     }
-    let j = end + 1;
+    let j = range.end + 1;
     let rightAdd = 0;
     while (j < source.length && WHITESPACE.test(source.charAt(j))) {
         j++;
         rightAdd++;
     }
     return {
-        start: start - leftAdd,
-        end: end + rightAdd,
+        start: range.start - leftAdd,
+        end: range.end + rightAdd,
     };
 }
 
-function collapseWhitespace(source: string, start: number, end: number): Range {
-    let i = start;
+function collapseWhitespace(source: string, range: Range): Range {
+    let i = range.start;
     let leftRemove = 0;
     while (i < source.length && WHITESPACE.test(source.charAt(i))) {
         i++;
         leftRemove++;
     }
-    let j = end - 1;
+    let j = range.end - 1;
     let rightRemove = 0;
     while (j >= 0 && WHITESPACE.test(source.charAt(j))) {
         j--;
         rightRemove++;
     }
     return {
-        start: start + leftRemove,
-        end: end - rightRemove,
+        start: range.start + leftRemove,
+        end: range.end - rightRemove,
+    };
+}
+
+export function nodeToRange(node: Node): Range {
+    return {
+        start: node.getFullStart(),
+        end: node.getEnd(),
     };
 }
 
 export class TypescriptStrategy implements SelectionStrategy {
-    grow(editor: TextEditor): void {
+    private expandWhitespace = false;
+
+    grow(editor: TextEditor): Range | undefined {
         const doc = editor.document;
-        const selectionStart = doc.offsetAt(editor.selection.start);
-        const selectionEnd = doc.offsetAt(editor.selection.end);
+        const startRange = {
+            start: doc.offsetAt(editor.selection.start),
+            end: doc.offsetAt(editor.selection.end),
+        };
         const text = doc.getText();
-        const range = expandWhitespace(text, selectionStart, selectionEnd);
+        const range = this.expandWhitespace ? expandWhitespace(text, startRange) : startRange;
         const node = createSourceFile(doc.fileName, text, ScriptTarget.Latest);
         const path = pathToPosition(node, range.start, range.end);
         let expansionNode: Node | undefined;
         for (let i = path.length - 1; i >= 0; i--) {
             const candidate = path[i];
-            const outRange = collapseWhitespace(text, candidate.getFullStart(), candidate.getEnd());
+            const outRange = collapseWhitespace(text, nodeToRange(candidate));
             if (outRange.start < range.start || outRange.end > range.end) {
                 expansionNode = candidate;
                 break;
             }
         }
         if (expansionNode === undefined) {
-            return;
+            return undefined;
         }
-        const outRange = collapseWhitespace(text, expansionNode.getFullStart(), expansionNode.getEnd());
-        editor.selection = new Selection(doc.positionAt(outRange.start), doc.positionAt(outRange.end));
-    }
-
-    shrink(editor: TextEditor): void {
-        // TODO: need use history from above
+        const outRange = collapseWhitespace(text, nodeToRange(expansionNode));
+        return outRange;
     }
 }

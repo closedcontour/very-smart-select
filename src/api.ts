@@ -6,6 +6,5 @@ export interface Range {
 }
 
 export interface SelectionStrategy {
-    grow(editor: TextEditor): void;
-    shrink(editor: TextEditor): void;
+    grow(editor: TextEditor): Range | undefined;
 }
