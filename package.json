@@ -26,6 +26,20 @@
                 "command": "very-smart-select.shrink",
                 "title": "Very Smart Select: Shrink the selection"
             }
+        ],
+        "keybindings": [
+            {
+                "command": "very-smart-select.grow",
+                "key": "shift+alt+right",
+                "mac": "ctrl+shift+cmd+right",
+                "when": "editorTextFocus"
+            },
+            {
+                "command": "very-smart-select.shrink",
+                "key": "shift+alt+left",
+                "mac": "ctrl+shift+cmd+left",
+                "when": "editorTextFocus"
+            }
         ]
     },
     "scripts": {
