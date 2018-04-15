@@ -52,6 +52,7 @@ class VerySmartSelect {
         const doc = editor.document;
         const strategy = this.strategies[doc.languageId];
         if (strategy === undefined) {
+            commands.executeCommand("editor.action.smartSelect.grow");
             return;
         }
         const range = strategy.grow(window.activeTextEditor!);
@@ -69,6 +70,8 @@ class VerySmartSelect {
         const historyItem = this.selectionHistory.pop();
         if (historyItem) {
             this.adjustSelection(historyItem);
+        } else {
+            commands.executeCommand("editor.action.smartSelect.shrink");
         }
     }
 
