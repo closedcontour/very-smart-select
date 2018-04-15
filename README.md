@@ -1,6 +1,6 @@
 A much smarter, drop-in replacement to the default Expand/Shrink Selection commands.
 
-![](https://raw.githubusercontent.com/closedcontour/very-smart-select/master/image/very-smart-select.gif
+![](https://raw.githubusercontent.com/closedcontour/very-smart-select/master/image/very-smart-select.gif)
 
 Currently supported languages:
 * Typescript (.ts, .tsx)
