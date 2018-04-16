@@ -61,6 +61,16 @@ function collapseWhitespace(source: string, range: Range): Range {
     };
 }
 
+function compact<T>(items: (T | undefined)[]): T[] {
+    const compactedItems: T[] = [];
+    for (const item of items) {
+        if (item !== undefined) {
+            compactedItems.push(item);
+        }
+    }
+    return compactedItems;
+}
+
 export function nodeToRange(node: Node): Range {
     return {
         start: node.getFullStart(),
@@ -71,29 +81,35 @@ export function nodeToRange(node: Node): Range {
 export class TypescriptStrategy implements SelectionStrategy {
     private expandWhitespace = false;
 
-    grow(editor: TextEditor): Range | undefined {
+    grow(editor: TextEditor): Range[] {
         const doc = editor.document;
-        const startRange = {
-            start: doc.offsetAt(editor.selection.start),
-            end: doc.offsetAt(editor.selection.end),
-        };
+        const startRanges = editor.selections.map(selection => ({
+            start: doc.offsetAt(selection.start),
+            end: doc.offsetAt(selection.end),
+        }));
         const text = doc.getText();
-        const range = this.expandWhitespace ? expandWhitespace(text, startRange) : startRange;
+        const ranges = this.expandWhitespace 
+            ? startRanges.map(range => expandWhitespace(text, range)) 
+            : startRanges;
         const node = createSourceFile(doc.fileName, text, ScriptTarget.Latest);
-        const path = pathToPosition(node, range.start, range.end);
-        let expansionNode: Node | undefined;
-        for (let i = path.length - 1; i >= 0; i--) {
-            const candidate = path[i];
-            const outRange = collapseWhitespace(text, nodeToRange(candidate));
-            if (outRange.start < range.start || outRange.end > range.end) {
-                expansionNode = candidate;
-                break;
+        const outRanges = compact(ranges.map(range => {
+            const path = pathToPosition(node, range.start, range.end);
+            let expansionNode: Node | undefined;
+            for (let i = path.length - 1; i >= 0; i--) {
+                const candidate = path[i];
+                const outRange = collapseWhitespace(text, nodeToRange(candidate));
+                if (outRange.start < range.start || outRange.end > range.end) {
+                    expansionNode = candidate;
+                    break;
+                }
             }
-        }
-        if (expansionNode === undefined) {
-            return undefined;
-        }
-        const outRange = collapseWhitespace(text, nodeToRange(expansionNode));
-        return outRange;
+            if (expansionNode === undefined) {
+                return undefined;
+            }
+            const outRange = collapseWhitespace(text, nodeToRange(expansionNode));
+            return outRange;
+        }));
+        
+        return outRanges;
     }
 }

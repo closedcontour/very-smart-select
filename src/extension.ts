@@ -1,5 +1,5 @@
 import { window, ExtensionContext, commands, Selection, Disposable }  from 'vscode';
-import { SelectionStrategy, Range } from './api';
+import { SelectionStrategy } from './api';
 import { TypescriptStrategy } from './languages/typescript';
 
 export function activate(context: ExtensionContext) {
@@ -22,9 +22,9 @@ export function deactivate() {
 class VerySmartSelect {
     private strategies: { [key:string]: SelectionStrategy | undefined } = {};
 
-    private selectionHistory: Range[] = [];
+    private selectionsHistory: Selection[][] = [];
     private windowSelectionListener: Disposable;
-    private lastRange: Range | undefined;
+    private didSetSelections: boolean = false;
 
     constructor() {
         this.strategies["typescript"] = new TypescriptStrategy();
@@ -34,12 +34,10 @@ class VerySmartSelect {
         this.strategies["json"] = new TypescriptStrategy();
 
         this.windowSelectionListener = window.onDidChangeTextEditorSelection(e => {
-            const newSelection = e.selections[0];
-            if (this.lastRange === undefined
-                || this.lastRange.start !== e.textEditor.document.offsetAt(newSelection.start)
-                || this.lastRange.end !== e.textEditor.document.offsetAt(newSelection.end)) {
-                this.lastRange = undefined;
-                this.selectionHistory = [];
+            if (this.didSetSelections) {
+                this.didSetSelections = false;
+            } else {
+                this.selectionsHistory = [];
             }
         });
     }
@@ -47,7 +45,7 @@ class VerySmartSelect {
     public grow() {
         const editor = window.activeTextEditor;
         if (!editor) {
-            return undefined;
+            return;
         }
         const doc = editor.document;
         const strategy = this.strategies[doc.languageId];
@@ -55,21 +53,18 @@ class VerySmartSelect {
             commands.executeCommand("editor.action.smartSelect.grow");
             return;
         }
-        const range = strategy.grow(window.activeTextEditor!);
-        if (range === undefined) {
-            return;
-        }
-        this.selectionHistory.push({
-            start: doc.offsetAt(editor.selection.start),
-            end: doc.offsetAt(editor.selection.end),
-        });
-        this.adjustSelection(range);
+        const ranges = strategy.grow(editor);
+        this.selectionsHistory.push([...editor.selections]);
+        const selections = ranges.map(range =>
+            new Selection(doc.positionAt(range.start), doc.positionAt(range.end))
+        );
+        this.setSelections(selections);
     }
 
     public shrink() {
-        const historyItem = this.selectionHistory.pop();
-        if (historyItem) {
-            this.adjustSelection(historyItem);
+        const selections = this.selectionsHistory.pop();
+        if (selections) {
+            this.setSelections(selections);
         } else {
             commands.executeCommand("editor.action.smartSelect.shrink");
         }
@@ -79,13 +74,11 @@ class VerySmartSelect {
         this.windowSelectionListener.dispose();
     }
 
-    private adjustSelection(range: Range) {
+    private setSelections(selections: Selection[]) {
         const editor = window.activeTextEditor;
-        if (editor === undefined) {
-            return;
+        if (editor) {
+            this.didSetSelections = true;
+            editor.selections = selections;
         }
-        const doc = editor.document;
-        this.lastRange = range;
-        editor.selection = new Selection(doc.positionAt(range.start), doc.positionAt(range.end));
     }
 }
