@@ -19,12 +19,17 @@ export function activate(context: ExtensionContext) {
 export function deactivate() {
 }
 
+function areSelectionsEqual(selections: Selection[], otherSelections: Selection[]): boolean {
+    return selections.length === otherSelections.length
+        && selections.every((selection, index) => selection.isEqual(otherSelections[index]));
+}
+
 class VerySmartSelect {
     private strategies: { [key:string]: SelectionStrategy | undefined } = {};
 
     private selectionsHistory: Selection[][] = [];
     private windowSelectionListener: Disposable;
-    private didSetSelections: boolean = false;
+    private didUpdateSelections: boolean = false;
 
     constructor() {
         this.strategies["typescript"] = new TypescriptStrategy();
@@ -34,8 +39,8 @@ class VerySmartSelect {
         this.strategies["json"] = new TypescriptStrategy();
 
         this.windowSelectionListener = window.onDidChangeTextEditorSelection(e => {
-            if (this.didSetSelections) {
-                this.didSetSelections = false;
+            if (this.didUpdateSelections) {
+                this.didUpdateSelections = false;
             } else {
                 this.selectionsHistory = [];
             }
@@ -54,17 +59,17 @@ class VerySmartSelect {
             return;
         }
         const ranges = strategy.grow(editor);
-        this.selectionsHistory.push([...editor.selections]);
         const selections = ranges.map(range =>
             new Selection(doc.positionAt(range.start), doc.positionAt(range.end))
         );
-        this.setSelections(selections);
+        this.updateSelectionsHistory(editor.selections);
+        this.updateSelections(selections);
     }
 
     public shrink() {
         const selections = this.selectionsHistory.pop();
         if (selections) {
-            this.setSelections(selections);
+            this.updateSelections(selections);
         } else {
             commands.executeCommand("editor.action.smartSelect.shrink");
         }
@@ -74,11 +79,20 @@ class VerySmartSelect {
         this.windowSelectionListener.dispose();
     }
 
-    private setSelections(selections: Selection[]) {
+    private updateSelections(selections: Selection[]) {
         const editor = window.activeTextEditor;
-        if (editor) {
-            this.didSetSelections = true;
+        if (editor && selections.length > 0) {
+            this.didUpdateSelections = true;
             editor.selections = selections;
+        }
+    }
+
+    private updateSelectionsHistory(selections: Selection[]) {
+        const lastSelections = this.selectionsHistory.length > 0
+            ? this.selectionsHistory[this.selectionsHistory.length - 1]
+            : undefined;
+        if (lastSelections === undefined || !areSelectionsEqual(lastSelections, selections)) {
+            this.selectionsHistory.push([...selections]);
         }
     }
 }
