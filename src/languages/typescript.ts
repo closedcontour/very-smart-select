@@ -61,16 +61,6 @@ function collapseWhitespace(source: string, range: Range): Range {
     };
 }
 
-function compact<T>(items: (T | undefined)[]): T[] {
-    const compactedItems: T[] = [];
-    for (const item of items) {
-        if (item !== undefined) {
-            compactedItems.push(item);
-        }
-    }
-    return compactedItems;
-}
-
 export function nodeToRange(node: Node): Range {
     return {
         start: node.getFullStart(),
@@ -92,23 +82,26 @@ export class TypescriptStrategy implements SelectionStrategy {
             ? startRanges.map(range => expandWhitespace(text, range)) 
             : startRanges;
         const node = createSourceFile(doc.fileName, text, ScriptTarget.Latest);
-        const outRanges = compact(ranges.map(range => {
-            const path = pathToPosition(node, range.start, range.end);
-            let expansionNode: Node | undefined;
-            for (let i = path.length - 1; i >= 0; i--) {
-                const candidate = path[i];
-                const outRange = collapseWhitespace(text, nodeToRange(candidate));
-                if (outRange.start < range.start || outRange.end > range.end) {
-                    expansionNode = candidate;
-                    break;
+        const outRanges = ranges
+            .map(range => {
+                const path = pathToPosition(node, range.start, range.end);
+                let expansionNode: Node | undefined;
+                for (let i = path.length - 1; i >= 0; i--) {
+                    const candidate = path[i];
+                    const outRange = collapseWhitespace(text, nodeToRange(candidate));
+                    if (outRange.start < range.start || outRange.end > range.end) {
+                        expansionNode = candidate;
+                        break;
+                    }
                 }
-            }
-            if (expansionNode === undefined) {
-                return undefined;
-            }
-            const outRange = collapseWhitespace(text, nodeToRange(expansionNode));
-            return outRange;
-        }));
+                if (expansionNode === undefined) {
+                    return undefined;
+                }
+                const outRange = collapseWhitespace(text, nodeToRange(expansionNode));
+                return outRange;
+            })
+            .filter(range => range !== undefined)
+            .map(range => range!);
         return outRanges;
     }
 }
