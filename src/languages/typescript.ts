@@ -109,7 +109,6 @@ export class TypescriptStrategy implements SelectionStrategy {
             const outRange = collapseWhitespace(text, nodeToRange(expansionNode));
             return outRange;
         }));
-        
         return outRanges;
     }
 }
