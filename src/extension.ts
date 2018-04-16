@@ -32,6 +32,7 @@ class VerySmartSelect {
         this.strategies["javascript"] = new TypescriptStrategy();
         this.strategies["javascriptreact"] = new TypescriptStrategy();
         this.strategies["json"] = new TypescriptStrategy();
+        this.strategies["jsonc"] = new TypescriptStrategy();
 
         this.windowSelectionListener = window.onDidChangeTextEditorSelection(e => {
             const newSelection = e.selections[0];
