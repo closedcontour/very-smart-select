@@ -6,5 +6,5 @@ export interface Range {
 }
 
 export interface SelectionStrategy {
-    grow(editor: TextEditor): Range | undefined;
+    grow(editor: TextEditor): Range[];
 }
