@@ -1,112 +1,109 @@
 import { SelectionStrategy, Range } from "../api";
 import { TextEditor } from "vscode";
-import { createSourceFile, Node, ScriptTarget } from "typescript";
+import { createSourceFile, Node, ScriptTarget, SyntaxKind, isTemplateSpan } from "typescript";
 
-function pathToPositionInternal(
-  node: Node,
-  start: number,
-  end: number,
-  path: Node[]
-) {
-  const nodeStart = node.getFullStart();
-  const nodeEnd = node.getEnd();
-  if (start < nodeStart || end > nodeEnd) {
-    return;
-  }
-  path.push(node);
-  node.forEachChild(child => {
-    pathToPositionInternal(child, start, end, path);
-  });
+function pathToPositionInternal(node: Node, start: number, end: number, path: Node[]) {
+    const nodeStart = node.getFullStart();
+    const nodeEnd = node.getEnd();
+    if (start < nodeStart || end > nodeEnd) {
+        return;
+    }
+    path.push(node);
+    node.forEachChild(child => {
+        pathToPositionInternal(child, start, end, path);
+    });
 }
 
 function pathToPosition(node: Node, start: number, end: number): Node[] {
-  const path: Node[] = [];
-  pathToPositionInternal(node, start, end, path);
-  return path;
+    const path: Node[] = [];
+    pathToPositionInternal(node, start, end, path);
+    return path;
 }
 
 const WHITESPACE = /\s/;
 
-// TODO: if you start in whitespace on either side, expand until you include non-whitespace
-function expandWhitespace(source: string, range: Range): Range {
-  let i = range.start - 1;
-  let leftAdd = 0;
-  while (i >= 0 && WHITESPACE.test(source.charAt(i))) {
-    i--;
-    leftAdd++;
-  }
-  let j = range.end + 1;
-  let rightAdd = 0;
-  while (j < source.length && WHITESPACE.test(source.charAt(j))) {
-    j++;
-    rightAdd++;
-  }
-  return {
-    start: range.start - leftAdd,
-    end: range.end + rightAdd
-  };
-}
-
 function collapseWhitespace(source: string, range: Range): Range {
-  let i = range.start;
-  let leftRemove = 0;
-  while (i < source.length && WHITESPACE.test(source.charAt(i))) {
-    i++;
-    leftRemove++;
-  }
-  let j = range.end - 1;
-  let rightRemove = 0;
-  while (j >= 0 && WHITESPACE.test(source.charAt(j))) {
-    j--;
-    rightRemove++;
-  }
-  return {
-    start: range.start + leftRemove,
-    end: range.end - rightRemove
-  };
+    let i = range.start;
+    let leftRemove = 0;
+    while (i < source.length && WHITESPACE.test(source.charAt(i))) {
+        i++;
+        leftRemove++;
+    }
+    let j = range.end - 1;
+    let rightRemove = 0;
+    while (j >= 0 && WHITESPACE.test(source.charAt(j))) {
+        j--;
+        rightRemove++;
+    }
+    return {
+        start: range.start + leftRemove,
+        end: range.end - rightRemove
+    };
 }
 
-export function nodeToRange(node: Node): Range {
-  return {
-    start: node.getFullStart(),
-    end: node.getEnd()
-  };
+export function nodeToRange(node: Node): Range | undefined {
+    let ds = 0;
+    let de = 0;
+    if (node.kind === SyntaxKind.TemplateHead) {
+        ds = 2;
+        de = -2;
+    }
+    if (node.kind === SyntaxKind.TemplateTail) {
+        ds = 1;
+        de = -1;
+    }
+    if (node.kind === SyntaxKind.TemplateMiddle) {
+        ds = 1;
+        de = -2;
+    }
+    if (isTemplateSpan(node)) {
+        ds = -2;
+        de = -node.literal.getFullWidth() + 1;
+    }
+    return {
+        start: node.getFullStart() + ds,
+        end: node.getEnd() + de
+    };
 }
 
 export class TypescriptStrategy implements SelectionStrategy {
-  private expandWhitespace = false;
-
-  grow(editor: TextEditor): Range[] {
-    const doc = editor.document;
-    const startRanges = editor.selections.map(selection => ({
-      start: doc.offsetAt(selection.start),
-      end: doc.offsetAt(selection.end)
-    }));
-    const text = doc.getText();
-    const ranges = this.expandWhitespace
-      ? startRanges.map(range => expandWhitespace(text, range))
-      : startRanges;
-    const node = createSourceFile(doc.fileName, text, ScriptTarget.Latest);
-    const outRanges = ranges
-      .map(range => {
-        const path = pathToPosition(node, range.start, range.end);
-        let expansionNode: Node | undefined;
-        for (let i = path.length - 1; i >= 0; i--) {
-          const candidate = path[i];
-          const outRange = collapseWhitespace(text, nodeToRange(candidate));
-          if (outRange.start < range.start || outRange.end > range.end) {
-            expansionNode = candidate;
-            break;
-          }
-        }
-        if (expansionNode === undefined) {
-          return undefined;
-        }
-        const outRange = collapseWhitespace(text, nodeToRange(expansionNode));
-        return outRange;
-      })
-      .filter(range => range !== undefined)
-      .map(range => range!);
-    return outRanges;
-  }
+    grow(editor: TextEditor): Range[] {
+        const doc = editor.document;
+        const startRanges = editor.selections.map(selection => ({
+            start: doc.offsetAt(selection.start),
+            end: doc.offsetAt(selection.end)
+        }));
+        const text = doc.getText();
+        const node = createSourceFile(doc.fileName, text, ScriptTarget.Latest);
+        const outRanges = startRanges
+            .map(range => {
+                const path = pathToPosition(node, range.start, range.end);
+                let expansionNode: Node | undefined;
+                let expansionRange: Range | undefined;
+                for (let i = path.length - 1; i >= 0; i--) {
+                    const candidate = path[i];
+                    const candidateRange = nodeToRange(candidate);
+                    if (candidateRange === undefined) {
+                        continue;
+                    }
+                    const outRange = collapseWhitespace(text, candidateRange);
+                    if (
+                        (outRange.start < range.start && outRange.end >= range.end) ||
+                        (outRange.end > range.end && outRange.start <= range.start)
+                    ) {
+                        expansionNode = candidate;
+                        expansionRange = candidateRange;
+                        break;
+                    }
+                }
+                if (expansionNode === undefined || expansionRange === undefined) {
+                    return undefined;
+                }
+                const outRange = collapseWhitespace(text, expansionRange);
+                return outRange;
+            })
+            .filter(range => range !== undefined)
+            .map(range => range!);
+        return outRanges;
+    }
 }

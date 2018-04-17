@@ -8,13 +8,8 @@
     "engines": {
         "vscode": "^1.21.0"
     },
-    "categories": [
-        "Other"
-    ],
-    "activationEvents": [
-        "onCommand:very-smart-select.grow",
-        "onCommand:very-smart-select.shrink"
-    ],
+    "categories": ["Other"],
+    "activationEvents": ["onCommand:very-smart-select.grow", "onCommand:very-smart-select.shrink"],
     "main": "./out/extension",
     "contributes": {
         "commands": [
@@ -57,5 +52,9 @@
         "@types/node": "^7.0.43",
         "tslint": "^5.8.0",
         "vscode": "^1.1.6"
+    },
+    "prettier": {
+        "printWidth": 100,
+        "tabWidth": 4
     }
 }
