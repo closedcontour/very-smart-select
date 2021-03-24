@@ -1,6 +1,14 @@
 import { SelectionStrategy, Range } from "../api";
 import { TextEditor } from "vscode";
-import { createSourceFile, Node, ScriptTarget, SyntaxKind, isTemplateSpan } from "typescript";
+import {
+    createSourceFile,
+    Node,
+    ScriptTarget,
+    SyntaxKind,
+    isTemplateSpan,
+    isBlock,
+    isObjectLiteralExpression
+} from "typescript";
 
 function pathToPositionInternal(node: Node, start: number, end: number, path: Node[]) {
     const nodeStart = node.getFullStart();
@@ -67,7 +75,7 @@ export function nodeToRange(node: Node): Range | undefined {
 }
 
 export class TypescriptStrategy implements SelectionStrategy {
-    grow(editor: TextEditor): Range[] {
+    grow(editor: TextEditor, excludeBrackets: boolean): Range[] {
         const doc = editor.document;
         const startRanges = editor.selections.map(selection => ({
             start: doc.offsetAt(selection.start),
@@ -100,6 +108,19 @@ export class TypescriptStrategy implements SelectionStrategy {
                     return undefined;
                 }
                 const outRange = collapseWhitespace(text, expansionRange);
+                if (excludeBrackets) {
+                    const expansionNodeSelected: Node = expansionNode;
+                    const nodeTypesWithBrackets = [isBlock, isObjectLiteralExpression];
+                    if (nodeTypesWithBrackets.some(isType => isType(expansionNodeSelected))) {
+                        const alreadyInBrackets =
+                            outRange.start + 1 === range.start && outRange.end - 1 === range.end;
+                        // if we are already inside the bracket selection then expand to include them
+                        if (!alreadyInBrackets) {
+                            outRange.start++;
+                            outRange.end--;
+                        }
+                    }
+                }
                 return outRange;
             })
             .filter(range => range !== undefined)

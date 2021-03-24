@@ -1,4 +1,4 @@
-import { window, ExtensionContext, commands, Selection, Disposable } from "vscode";
+import { window, ExtensionContext, commands, Selection, Disposable, workspace } from "vscode";
 import { SelectionStrategy } from "./api";
 import { TypescriptStrategy } from "./languages/typescript";
 
@@ -31,6 +31,7 @@ class VerySmartSelect {
     private selectionsHistory: Selection[][] = [];
     private windowSelectionListener: Disposable;
     private didUpdateSelections: boolean = false;
+    private excludeBrackets: boolean = false;
 
     constructor() {
         this.strategies["typescript"] = new TypescriptStrategy();
@@ -39,6 +40,8 @@ class VerySmartSelect {
         this.strategies["javascriptreact"] = new TypescriptStrategy();
         this.strategies["json"] = new TypescriptStrategy();
         this.strategies["jsonc"] = new TypescriptStrategy();
+
+        this.excludeBrackets = workspace.getConfiguration("very-smart-select").excludeBrackets;
 
         this.windowSelectionListener = window.onDidChangeTextEditorSelection(e => {
             if (this.didUpdateSelections) {
@@ -60,7 +63,7 @@ class VerySmartSelect {
             commands.executeCommand("editor.action.smartSelect.grow");
             return;
         }
-        const ranges = strategy.grow(editor);
+        const ranges = strategy.grow(editor, this.excludeBrackets);
         const selections = ranges.map(
             range => new Selection(doc.positionAt(range.start), doc.positionAt(range.end))
         );
