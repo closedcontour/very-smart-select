@@ -7,7 +7,8 @@ import {
     SyntaxKind,
     isTemplateSpan,
     isBlock,
-    isObjectLiteralExpression
+    isObjectLiteralExpression,
+    isObjectBindingPattern
 } from "typescript";
 
 function pathToPositionInternal(node: Node, start: number, end: number, path: Node[]) {
@@ -110,7 +111,7 @@ export class TypescriptStrategy implements SelectionStrategy {
                 const outRange = collapseWhitespace(text, expansionRange);
                 if (excludeBrackets) {
                     const expansionNodeSelected: Node = expansionNode;
-                    const nodeTypesWithBrackets = [isBlock, isObjectLiteralExpression];
+                    const nodeTypesWithBrackets = [isBlock, isObjectLiteralExpression, isObjectBindingPattern];
                     if (nodeTypesWithBrackets.some(isType => isType(expansionNodeSelected))) {
                         const alreadyInBrackets =
                             outRange.start + 1 === range.start && outRange.end - 1 === range.end;
