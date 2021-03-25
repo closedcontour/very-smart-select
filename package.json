@@ -40,7 +40,18 @@
                 "mac": "ctrl+shift+cmd+left",
                 "when": "editorTextFocus"
             }
-        ]
+        ],
+        "configuration": {
+            "type": "object",
+            "title": "Very Smart Select",
+            "properties": {
+                "very-smart-select.excludeBrackets": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "will exclude function/object brackets when expanding."
+                }
+            }
+        }
     },
     "scripts": {
         "vscode:prepublish": "npm run compile",
@@ -56,10 +67,12 @@
         "@types/mocha": "^2.2.42",
         "@types/node": "^7.0.43",
         "tslint": "^5.8.0",
-        "vscode": "^1.1.6"
+        "vscode": "^1"
     },
     "prettier": {
         "printWidth": 100,
-        "tabWidth": 4
+        "tabWidth": 4,
+        "trailingComma": "none",
+        "arrowParens": "avoid"
     }
 }
